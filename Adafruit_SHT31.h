@@ -13,6 +13,8 @@
   Written by Limor Fried/Ladyada for Adafruit Industries.  
   BSD license, all text above must be included in any redistribution
  ****************************************************/
+#ifndef ADAFRUIT_SHT31_H
+#define ADAFRUIT_SHT31_H
 
 #if (ARDUINO >= 100)
  #include "Arduino.h"
@@ -40,17 +42,25 @@ class Adafruit_SHT31 {
   boolean begin(uint8_t i2caddr = SHT31_DEFAULT_ADDR);
   float readTemperature(void);
   float readHumidity(void);
+  float temperature(void) { return _temp; } 
+  float humidity(void) { return _humidity; }
   uint16_t readStatus(void);
   void reset(void);
   void heater(boolean);
   uint8_t crc8(const uint8_t *data, int len);
 
+  // Setup to be able to read in two parts 
+  // as to not have to delay processor for half second...
+  boolean beginReadTempHum(void);
+  boolean completeReadTempHum(void);
+
  private:
   boolean readTempHum(void);
-  void writeCommand(uint16_t cmd);
+  boolean writeCommand(uint16_t cmd);
 
   uint8_t _i2caddr;
   boolean readData(void);
-  float humidity, temp;
+  float _humidity, _temp;
 };
 
+#endif

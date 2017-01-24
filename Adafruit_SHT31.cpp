@@ -55,23 +55,24 @@ void Adafruit_SHT31::heater(boolean h) {
 float Adafruit_SHT31::readTemperature(void) {
   if (! readTempHum()) return NAN;
 
-  return temp;
+  return _temp;
 }
   
 
 float Adafruit_SHT31::readHumidity(void) {
   if (! readTempHum()) return NAN;
 
-  return humidity;
+  return _humidity;
 }
 
 
-boolean Adafruit_SHT31::readTempHum(void) {
+boolean Adafruit_SHT31::beginReadTempHum(void) {
+  return writeCommand(SHT31_MEAS_HIGHREP);
+}
+
+boolean Adafruit_SHT31::completeReadTempHum(void) {
   uint8_t readbuffer[6];
 
-  writeCommand(SHT31_MEAS_HIGHREP);
-  
-  delay(500);
   Wire.requestFrom(_i2caddr, (uint8_t)6);
   if (Wire.available() != 6) 
     return false;
@@ -97,23 +98,42 @@ boolean Adafruit_SHT31::readTempHum(void) {
   stemp *= 175;
   stemp /= 0xffff;
   stemp = -45 + stemp;
-  temp = stemp;
+  _temp = stemp;
   
 //  Serial.print("SRH = "); Serial.println(SRH);
   double shum = SRH;
   shum *= 100;
   shum /= 0xFFFF;
   
-  humidity = shum;
+  _humidity = shum;
   
   return true;
 }
 
-void Adafruit_SHT31::writeCommand(uint16_t cmd) {
+
+boolean Adafruit_SHT31::readTempHum(void) {
+  if (beginReadTempHum()) {  // simply write out the command. 
+    delay(500);
+    return completeReadTempHum();
+  }
+  return false;
+}
+
+boolean Adafruit_SHT31::writeCommand(uint16_t cmd) {
   Wire.beginTransmission(_i2caddr);
   Wire.write(cmd >> 8);
   Wire.write(cmd & 0xFF);
-  Wire.endTransmission();  
+  uint8_t retval = Wire.endTransmission();  
+  if (retval) {
+    //Serial.printf("AWC End Fail try again: %d %d\n", cmd, retval );
+    // Try again... 
+    retval = Wire.endTransmission();  
+    if (retval) {
+      //Serial.printf("Failed again: %d %d\n", cmd, retval );
+      return false;
+    }
+  }
+  return true;
 }
 
 uint8_t Adafruit_SHT31::crc8(const uint8_t *data, int len)
